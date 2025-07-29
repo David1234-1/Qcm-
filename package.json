@@ -1,0 +1,49 @@
+{
+  "name": "studyhub",
+  "version": "1.0.0",
+  "description": "Plateforme de révision intelligente avec IA intégrée",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "live-server --port=8000 --open=/",
+    "build": "echo 'Build completed'",
+    "test": "echo 'Tests completed'",
+    "lint": "eslint scripts/*.js",
+    "format": "prettier --write \"**/*.{js,css,html,md}\"",
+    "deploy": "echo 'Deploy to your hosting service'"
+  },
+  "keywords": [
+    "education",
+    "learning",
+    "ai",
+    "flashcards",
+    "quiz",
+    "study",
+    "revision",
+    "pdf",
+    "document-processing"
+  ],
+  "author": "StudyHub Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/votre-username/studyhub.git"
+  },
+  "bugs": {
+    "url": "https://github.com/votre-username/studyhub/issues"
+  },
+  "homepage": "https://github.com/votre-username/studyhub#readme",
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "prettier": "^2.8.0",
+    "live-server": "^1.2.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
