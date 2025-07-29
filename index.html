@@ -15,6 +15,58 @@
     </button>
   </div>
 
+  <!-- Système d'authentification -->
+  <div id="auth-overlay" class="auth-overlay">
+    <div class="auth-modal">
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Connexion</button>
+        <button class="auth-tab" data-tab="register">Inscription</button>
+      </div>
+      
+      <!-- Formulaire de connexion -->
+      <form id="login-form" class="auth-form active">
+        <h3>Connexion</h3>
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Mot de passe</label>
+          <input type="password" id="login-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Se connecter</button>
+        <button type="button" class="btn btn-google">
+          <i class="fab fa-google"></i> Continuer avec Google
+        </button>
+      </form>
+      
+      <!-- Formulaire d'inscription -->
+      <form id="register-form" class="auth-form">
+        <h3>Inscription</h3>
+        <div class="form-group">
+          <label for="register-name">Nom complet</label>
+          <input type="text" id="register-name" required>
+        </div>
+        <div class="form-group">
+          <label for="register-email">Email</label>
+          <input type="email" id="register-email" required>
+        </div>
+        <div class="form-group">
+          <label for="register-password">Mot de passe</label>
+          <input type="password" id="register-password" required>
+        </div>
+        <div class="form-group">
+          <label for="register-confirm-password">Confirmer le mot de passe</label>
+          <input type="password" id="register-confirm-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">S'inscrire</button>
+        <button type="button" class="btn btn-google">
+          <i class="fab fa-google"></i> Continuer avec Google
+        </button>
+      </form>
+    </div>
+  </div>
+
   <header class="header">
     <div class="header-content">
       <div class="logo-section">
@@ -39,8 +91,23 @@
             <i class="fas fa-upload"></i>
             <span>Importer</span>
           </a></li>
+          <li><a href="pages/ai-chat.html" class="nav-link">
+            <i class="fas fa-robot"></i>
+            <span>IA Assistant</span>
+          </a></li>
         </ul>
       </nav>
+      <div class="user-section">
+        <div id="user-info" class="user-info hidden">
+          <span id="user-name"></span>
+          <button id="logout-btn" class="btn btn-secondary">
+            <i class="fas fa-sign-out-alt"></i>
+          </button>
+        </div>
+        <button id="login-btn" class="btn btn-primary">
+          <i class="fas fa-sign-in-alt"></i> Connexion
+        </button>
+      </div>
     </div>
   </header>
 
@@ -101,10 +168,24 @@
         </div>
         <div class="feature-card">
           <div class="feature-icon">
+            <i class="fas fa-robot"></i>
+          </div>
+          <h4>IA Assistant</h4>
+          <p>Posez des questions à notre IA intégrée pour des explications personnalisées</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
             <i class="fas fa-chart-bar"></i>
           </div>
           <h4>Statistiques Détaillées</h4>
           <p>Suivez vos progrès avec des analyses complètes par matière</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <i class="fas fa-cloud"></i>
+          </div>
+          <h4>Synchronisation Cloud</h4>
+          <p>Sauvegardez et synchronisez vos données sur tous vos appareils</p>
         </div>
       </div>
     </section>
@@ -112,6 +193,10 @@
     <section class="quick-actions">
       <h3>Actions rapides</h3>
       <div class="actions-grid">
+        <a href="pages/import.html" class="action-card">
+          <i class="fas fa-file-upload"></i>
+          <span>Importer un fichier</span>
+        </a>
         <a href="pages/flashcards.html" class="action-card">
           <i class="fas fa-plus"></i>
           <span>Nouvelle matière</span>
@@ -120,13 +205,17 @@
           <i class="fas fa-edit"></i>
           <span>Créer un QCM</span>
         </a>
-        <a href="pages/import.html" class="action-card">
-          <i class="fas fa-file-upload"></i>
-          <span>Importer un fichier</span>
+        <a href="pages/ai-chat.html" class="action-card">
+          <i class="fas fa-robot"></i>
+          <span>Poser une question à l'IA</span>
         </a>
         <a href="pages/resumes.html" class="action-card">
           <i class="fas fa-eye"></i>
           <span>Voir les résumés</span>
+        </a>
+        <a href="pages/statistics.html" class="action-card">
+          <i class="fas fa-chart-line"></i>
+          <span>Mes statistiques</span>
         </a>
       </div>
     </section>
@@ -137,5 +226,6 @@
   </footer>
 
   <script src="scripts/main.js"></script>
+  <script src="scripts/auth.js"></script>
 </body>
 </html>
