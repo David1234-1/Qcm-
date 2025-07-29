@@ -33,8 +33,7 @@ class ResumesManager {
 
     setupEventListeners() {
         // Gestion des onglets
-        const tabButtons = document.querySelectorAll('.tab-btn');
-        tabButtons.forEach(btn => {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 this.switchTab(e.target.dataset.tab);
             });
@@ -42,11 +41,12 @@ class ResumesManager {
 
         // Filtres
         const subjectFilter = document.getElementById('subject-filter');
+        const searchFilter = document.getElementById('search-filter');
+        
         if (subjectFilter) {
             subjectFilter.addEventListener('change', () => this.filterResumes());
         }
-
-        const searchFilter = document.getElementById('search-filter');
+        
         if (searchFilter) {
             searchFilter.addEventListener('input', StudyHub.Utils.debounce(() => this.filterResumes(), 300));
         }
@@ -60,28 +60,39 @@ class ResumesManager {
             });
         }
 
-        // Gestion des champs dynamiques
-        const addTagBtn = document.getElementById('add-tag-btn');
-        if (addTagBtn) {
-            addTagBtn.addEventListener('click', () => this.addTagField());
-        }
+        // Boutons d'action
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-add-field')) {
+                this.addTagField();
+            } else if (e.target.classList.contains('btn-remove-field')) {
+                this.removeTagField(e.target);
+            } else if (e.target.classList.contains('btn-view-resume')) {
+                this.viewResume(e.target.dataset.id);
+            } else if (e.target.classList.contains('btn-edit-resume')) {
+                this.editResume(e.target.dataset.id);
+            } else if (e.target.classList.contains('btn-delete-resume')) {
+                this.deleteResume(e.target.dataset.id);
+            } else if (e.target.classList.contains('btn-export-resume')) {
+                this.exportResume(e.target.dataset.id);
+            }
+        });
     }
 
     switchTab(tabName) {
-        this.currentTab = tabName;
-        
-        // Mettre à jour les boutons d'onglets
+        // Mettre à jour les onglets actifs
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.classList.remove('active');
         });
         document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-        
+
         // Afficher le contenu correspondant
         document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.remove('active');
         });
         document.getElementById(`${tabName}-tab`).classList.add('active');
-        
+
+        this.currentTab = tabName;
+
         // Charger le contenu approprié
         switch (tabName) {
             case 'browse':
@@ -99,27 +110,132 @@ class ResumesManager {
     loadSubjects() {
         const subjectSelect = document.getElementById('resume-subject');
         if (!subjectSelect) return;
-        
+
+        // Vider les options existantes
         subjectSelect.innerHTML = '<option value="">Sélectionner une matière</option>';
-        
+
+        // Ajouter les matières existantes
         this.subjects.forEach(subject => {
             const option = document.createElement('option');
             option.value = subject.name;
             option.textContent = subject.name;
             subjectSelect.appendChild(option);
         });
+
+        // Ajouter l'option pour créer une nouvelle matière
+        const newOption = document.createElement('option');
+        newOption.value = 'new';
+        newOption.textContent = '+ Créer une nouvelle matière';
+        subjectSelect.appendChild(newOption);
+    }
+
+    addTagField() {
+        const tagsContainer = document.getElementById('tags-container');
+        const tagIndex = tagsContainer.children.length;
+        
+        const tagDiv = document.createElement('div');
+        tagDiv.className = 'form-group tag-field';
+        tagDiv.innerHTML = `
+            <div class="input-group">
+                <input type="text" 
+                       class="form-input" 
+                       name="tag-${tagIndex}" 
+                       placeholder="Tag ${tagIndex + 1}"
+                       maxlength="50">
+                <button type="button" class="btn btn-secondary btn-remove-field">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        tagsContainer.appendChild(tagDiv);
+    }
+
+    removeTagField(button) {
+        button.closest('.tag-field').remove();
+        this.updateTagNumbers();
+    }
+
+    updateTagNumbers() {
+        const tagFields = document.querySelectorAll('.tag-field');
+        tagFields.forEach((field, index) => {
+            const input = field.querySelector('input');
+            input.name = `tag-${index}`;
+            input.placeholder = `Tag ${index + 1}`;
+        });
+    }
+
+    saveResume() {
+        const form = document.getElementById('resume-form');
+        const formData = new FormData(form);
+
+        // Validation
+        const subject = formData.get('subject');
+        const title = formData.get('title').trim();
+        const content = formData.get('content').trim();
+
+        if (!subject || subject === 'new') {
+            StudyHub.NotificationManager.show('Veuillez sélectionner une matière', 'warning');
+            return;
+        }
+
+        if (!title) {
+            StudyHub.NotificationManager.show('Veuillez saisir un titre', 'warning');
+            return;
+        }
+
+        if (!content) {
+            StudyHub.NotificationManager.show('Veuillez saisir le contenu du résumé', 'warning');
+            return;
+        }
+
+        // Récupérer les tags
+        const tags = [];
+        const tagInputs = form.querySelectorAll('input[name^="tag-"]');
+        tagInputs.forEach(input => {
+            const tag = input.value.trim();
+            if (tag) {
+                tags.push(tag);
+            }
+        });
+
+        // Créer le résumé
+        const resume = {
+            id: StudyHub.Utils.generateId(),
+            subject: subject,
+            title: title,
+            description: formData.get('description').trim(),
+            content: content,
+            tags: tags,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            type: 'manual'
+        };
+
+        // Sauvegarder
+        this.resumes.push(resume);
+        StudyHub.StorageManager.set('resumes', this.resumes);
+
+        // Réinitialiser le formulaire
+        form.reset();
+        document.getElementById('tags-container').innerHTML = '';
+
+        StudyHub.NotificationManager.show('Résumé créé avec succès !', 'success');
+
+        // Revenir à l'onglet de consultation
+        this.switchTab('browse');
     }
 
     displayResumes() {
-        const resumesGrid = document.getElementById('resumes-grid');
-        if (!resumesGrid) return;
-        
-        resumesGrid.innerHTML = '';
-        
+        const container = document.getElementById('resumes-grid');
+        if (!container) return;
+
+        container.innerHTML = '';
+
         if (this.resumes.length === 0) {
-            resumesGrid.innerHTML = `
+            container.innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-file-alt"></i>
+                    <i class="fas fa-file-alt empty-icon"></i>
                     <h3>Aucun résumé créé</h3>
                     <p>Créez votre premier résumé pour commencer à organiser vos connaissances.</p>
                     <button class="btn btn-primary" onclick="resumesManager.switchTab('create')">
@@ -129,45 +245,77 @@ class ResumesManager {
             `;
             return;
         }
-        
+
         this.resumes.forEach(resume => {
-            const resumeCard = this.createResumeCard(resume);
-            resumesGrid.appendChild(resumeCard);
+            const card = this.createResumeCard(resume);
+            container.appendChild(card);
         });
     }
 
-    createResumeCard(resume) {
+    displayImportedResumes() {
+        const container = document.getElementById('imported-resumes-grid');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        if (this.importedResumes.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-file-import empty-icon"></i>
+                    <h3>Aucun résumé importé</h3>
+                    <p>Les résumés générés automatiquement à partir de vos fichiers importés apparaîtront ici.</p>
+                    <button class="btn btn-primary" onclick="resumesManager.switchTab('browse')">
+                        <i class="fas fa-file-alt"></i> Voir tous les résumés
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        this.importedResumes.forEach(resume => {
+            const card = this.createResumeCard(resume, true);
+            container.appendChild(card);
+        });
+    }
+
+    createResumeCard(resume, isImported = false) {
         const card = document.createElement('div');
         card.className = 'resume-card card';
+        card.dataset.id = resume.id;
+
+        const tagsHtml = resume.tags && resume.tags.length > 0 
+            ? resume.tags.map(tag => `<span class="tag">${tag}</span>`).join('')
+            : '';
+
+        const date = new Date(resume.createdAt).toLocaleDateString('fr-FR');
+
         card.innerHTML = `
             <div class="resume-header">
-                <h3 class="resume-title">${resume.title}</h3>
-                <span class="resume-subject">${resume.subject}</span>
+                <div class="resume-meta">
+                    <span class="resume-subject">${resume.subject}</span>
+                    <span class="resume-date">${date}</span>
+                </div>
+                ${isImported ? '<span class="imported-badge"><i class="fas fa-robot"></i> Auto-généré</span>' : ''}
             </div>
-            <p class="resume-description">${resume.description}</p>
-            <div class="resume-meta">
-                <span class="resume-date">
-                    <i class="fas fa-calendar"></i>
-                    ${StudyHub.Utils.formatDate(resume.createdAt)}
-                </span>
-                ${resume.tags.length > 0 ? `
-                    <div class="resume-tags">
-                        ${resume.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
-                    </div>
-                ` : ''}
-            </div>
+            <h3 class="resume-title">${resume.title}</h3>
+            ${resume.description ? `<p class="resume-description">${resume.description}</p>` : ''}
+            ${tagsHtml ? `<div class="resume-tags">${tagsHtml}</div>` : ''}
             <div class="resume-actions">
-                <button class="btn btn-secondary" onclick="resumesManager.viewResume('${resume.id}')">
+                <button class="btn btn-primary btn-view-resume" data-id="${resume.id}">
                     <i class="fas fa-eye"></i> Voir
                 </button>
-                <button class="btn btn-primary" onclick="resumesManager.editResume('${resume.id}')">
+                <button class="btn btn-secondary btn-edit-resume" data-id="${resume.id}">
                     <i class="fas fa-edit"></i> Modifier
                 </button>
-                <button class="btn btn-error" onclick="resumesManager.deleteResume('${resume.id}')">
+                <button class="btn btn-secondary btn-export-resume" data-id="${resume.id}">
+                    <i class="fas fa-download"></i> Exporter
+                </button>
+                <button class="btn btn-error btn-delete-resume" data-id="${resume.id}">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
         `;
+
         return card;
     }
 
@@ -177,115 +325,32 @@ class ResumesManager {
         
         const selectedSubject = subjectFilter ? subjectFilter.value : '';
         const searchTerm = searchFilter ? searchFilter.value.toLowerCase() : '';
-        
-        const filteredResumes = this.resumes.filter(resume => {
-            const matchesSubject = !selectedSubject || resume.subject === selectedSubject;
-            const matchesSearch = !searchTerm || 
-                resume.title.toLowerCase().includes(searchTerm) ||
-                resume.description.toLowerCase().includes(searchTerm) ||
-                resume.tags.some(tag => tag.toLowerCase().includes(searchTerm));
-            
-            return matchesSubject && matchesSearch;
-        });
-        
-        this.displayFilteredResumes(filteredResumes);
-    }
 
-    displayFilteredResumes(resumes) {
-        const resumesGrid = document.getElementById('resumes-grid');
-        if (!resumesGrid) return;
+        const container = document.getElementById('resumes-grid');
+        if (!container) return;
+
+        const cards = container.querySelectorAll('.resume-card');
         
-        resumesGrid.innerHTML = '';
-        
-        if (resumes.length === 0) {
-            resumesGrid.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-search"></i>
-                    <h3>Aucun résumé trouvé</h3>
-                    <p>Aucun résumé ne correspond à vos critères de recherche.</p>
-                </div>
-            `;
-            return;
-        }
-        
-        resumes.forEach(resume => {
-            const resumeCard = this.createResumeCard(resume);
-            resumesGrid.appendChild(resumeCard);
+        cards.forEach(card => {
+            const subject = card.querySelector('.resume-subject').textContent;
+            const title = card.querySelector('.resume-title').textContent.toLowerCase();
+            const description = card.querySelector('.resume-description')?.textContent.toLowerCase() || '';
+
+            const subjectMatch = !selectedSubject || subject === selectedSubject;
+            const searchMatch = !searchTerm || 
+                title.includes(searchTerm) || 
+                description.includes(searchTerm);
+
+            card.style.display = subjectMatch && searchMatch ? 'block' : 'none';
         });
     }
 
-    saveResume() {
-        const form = document.getElementById('resume-form');
-        const formData = new FormData(form);
-        
-        const resume = {
-            id: StudyHub.Utils.generateId(),
-            title: formData.get('title').trim(),
-            subject: formData.get('subject'),
-            description: formData.get('description').trim(),
-            content: formData.get('content').trim(),
-            tags: this.getTagsFromForm(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-        
-        // Validation
-        if (!resume.title || !resume.subject || !resume.content) {
-            StudyHub.NotificationManager.show('Veuillez remplir tous les champs obligatoires', 'error');
-            return;
-        }
-        
-        // Ajouter aux résumés
-        this.resumes.push(resume);
-        StudyHub.StorageManager.set('resumes', this.resumes);
-        
-        // Réinitialiser le formulaire
-        form.reset();
-        this.clearTags();
-        
-        // Afficher une notification
-        StudyHub.NotificationManager.show('Résumé créé avec succès !', 'success');
-        
-        // Basculer vers l'onglet de consultation
-        this.switchTab('browse');
-    }
-
-    getTagsFromForm() {
-        const tagInputs = document.querySelectorAll('.tag-input');
-        const tags = [];
-        tagInputs.forEach(input => {
-            const tag = input.value.trim();
-            if (tag) tags.push(tag);
-        });
-        return tags;
-    }
-
-    addTagField() {
-        const tagsContainer = document.getElementById('tags-container');
-        const tagGroup = document.createElement('div');
-        tagGroup.className = 'tag-group';
-        tagGroup.innerHTML = `
-            <input type="text" class="form-input tag-input" placeholder="Tag">
-            <button type="button" class="btn btn-error" onclick="this.parentElement.remove()">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-        tagsContainer.appendChild(tagGroup);
-    }
-
-    clearTags() {
-        const tagsContainer = document.getElementById('tags-container');
-        if (tagsContainer) {
-            tagsContainer.innerHTML = '';
-        }
-    }
-
-    viewResume(resumeId) {
-        const resume = this.resumes.find(r => r.id === resumeId) || 
-                      this.importedResumes.find(r => r.id === resumeId);
+    viewResume(id) {
+        const resume = this.resumes.find(r => r.id === id) || 
+                      this.importedResumes.find(r => r.id === id);
         
         if (!resume) return;
-        
+
         this.currentResume = resume;
         this.showResumeModal();
     }
@@ -293,9 +358,15 @@ class ResumesManager {
     showResumeModal() {
         const modal = document.getElementById('resume-modal');
         if (!modal || !this.currentResume) return;
-        
+
         const resume = this.currentResume;
-        
+        const date = new Date(resume.createdAt).toLocaleDateString('fr-FR');
+        const updatedDate = new Date(resume.updatedAt).toLocaleDateString('fr-FR');
+
+        const tagsHtml = resume.tags && resume.tags.length > 0 
+            ? resume.tags.map(tag => `<span class="tag">${tag}</span>`).join('')
+            : '';
+
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
@@ -306,48 +377,58 @@ class ResumesManager {
                 </div>
                 <div class="modal-body">
                     <div class="resume-info">
-                        <p class="resume-subject">
-                            <i class="fas fa-book"></i> ${resume.subject}
-                        </p>
-                        <p class="resume-date">
-                            <i class="fas fa-calendar"></i> 
-                            Créé le ${StudyHub.Utils.formatDate(resume.createdAt)}
-                        </p>
-                        ${resume.tags && resume.tags.length > 0 ? `
-                            <div class="resume-tags">
-                                ${resume.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        <div class="info-row">
+                            <span class="info-label">Matière:</span>
+                            <span class="info-value">${resume.subject}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Créé le:</span>
+                            <span class="info-value">${date}</span>
+                        </div>
+                        ${resume.updatedAt !== resume.createdAt ? `
+                            <div class="info-row">
+                                <span class="info-label">Modifié le:</span>
+                                <span class="info-value">${updatedDate}</span>
+                            </div>
+                        ` : ''}
+                        ${resume.type === 'imported' ? `
+                            <div class="info-row">
+                                <span class="info-label">Type:</span>
+                                <span class="info-value"><i class="fas fa-robot"></i> Généré automatiquement</span>
                             </div>
                         ` : ''}
                     </div>
-                    
                     ${resume.description ? `
-                        <div class="resume-description">
+                        <div class="resume-description-full">
                             <h3>Description</h3>
                             <p>${resume.description}</p>
                         </div>
                     ` : ''}
-                    
+                    ${tagsHtml ? `
+                        <div class="resume-tags-full">
+                            <h3>Tags</h3>
+                            <div class="tags-container">${tagsHtml}</div>
+                        </div>
+                    ` : ''}
                     <div class="resume-content">
                         <h3>Contenu</h3>
                         <div class="content-text">${resume.content}</div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="resumesManager.exportResume()">
+                    <button class="btn btn-secondary" onclick="resumesManager.editResume('${resume.id}')">
+                        <i class="fas fa-edit"></i> Modifier
+                    </button>
+                    <button class="btn btn-secondary" onclick="resumesManager.exportResume('${resume.id}')">
                         <i class="fas fa-download"></i> Exporter
                     </button>
-                    ${!resume.isImported ? `
-                        <button class="btn btn-primary" onclick="resumesManager.editResume('${resume.id}')">
-                            <i class="fas fa-edit"></i> Modifier
-                        </button>
-                    ` : ''}
                     <button class="btn btn-error" onclick="resumesManager.deleteResume('${resume.id}')">
                         <i class="fas fa-trash"></i> Supprimer
                     </button>
                 </div>
             </div>
         `;
-        
+
         modal.classList.add('active');
     }
 
@@ -359,69 +440,93 @@ class ResumesManager {
         this.currentResume = null;
     }
 
-    editResume(resumeId) {
-        const resume = this.resumes.find(r => r.id === resumeId);
-        if (!resume) return;
-        
+    editResume(id) {
+        const resume = this.resumes.find(r => r.id === id);
+        if (!resume) {
+            StudyHub.NotificationManager.show('Résumé introuvable', 'error');
+            return;
+        }
+
         // Remplir le formulaire
         const form = document.getElementById('resume-form');
-        form.querySelector('[name="title"]').value = resume.title;
         form.querySelector('[name="subject"]').value = resume.subject;
+        form.querySelector('[name="title"]').value = resume.title;
         form.querySelector('[name="description"]').value = resume.description;
         form.querySelector('[name="content"]').value = resume.content;
-        
+
         // Ajouter les tags
-        this.clearTags();
-        resume.tags.forEach(tag => {
-            this.addTagField();
-            const lastTagInput = document.querySelector('.tag-input:last-of-type');
-            if (lastTagInput) lastTagInput.value = tag;
-        });
+        const tagsContainer = document.getElementById('tags-container');
+        tagsContainer.innerHTML = '';
         
-        // Basculer vers l'onglet de création
+        if (resume.tags && resume.tags.length > 0) {
+            resume.tags.forEach((tag, index) => {
+                this.addTagField();
+                const lastTagField = tagsContainer.lastElementChild;
+                lastTagField.querySelector('input').value = tag;
+            });
+        }
+
+        // Aller à l'onglet de création
         this.switchTab('create');
         
-        // Marquer comme édition
-        form.dataset.editId = resumeId;
+        // Marquer le formulaire comme étant en mode édition
+        form.dataset.editId = id;
+        
+        StudyHub.NotificationManager.show('Résumé chargé pour modification', 'info');
     }
 
-    deleteResume(resumeId) {
-        if (!confirm('Êtes-vous sûr de vouloir supprimer ce résumé ?')) return;
-        
+    deleteResume(id) {
+        if (!confirm('Êtes-vous sûr de vouloir supprimer ce résumé ?')) {
+            return;
+        }
+
         // Supprimer des résumés manuels
-        this.resumes = this.resumes.filter(r => r.id !== resumeId);
+        this.resumes = this.resumes.filter(r => r.id !== id);
         StudyHub.StorageManager.set('resumes', this.resumes);
-        
+
         // Supprimer des résumés importés
-        this.importedResumes = this.importedResumes.filter(r => r.id !== resumeId);
+        this.importedResumes = this.importedResumes.filter(r => r.id !== id);
         StudyHub.StorageManager.set('imported_resumes', this.importedResumes);
-        
+
         // Fermer le modal si ouvert
         this.hideResumeModal();
-        
-        // Rafraîchir l'affichage
-        this.displayResumes();
-        
+
+        // Recharger l'affichage
+        if (this.currentTab === 'browse') {
+            this.displayResumes();
+        } else if (this.currentTab === 'imported') {
+            this.displayImportedResumes();
+        }
+
         StudyHub.NotificationManager.show('Résumé supprimé avec succès', 'success');
     }
 
-    exportResume() {
-        if (!this.currentResume) return;
+    exportResume(id) {
+        const resume = this.resumes.find(r => r.id === id) || 
+                      this.importedResumes.find(r => r.id === id);
         
-        const resume = this.currentResume;
+        if (!resume) {
+            StudyHub.NotificationManager.show('Résumé introuvable', 'error');
+            return;
+        }
+
+        // Créer le contenu du fichier
         const content = `
-Résumé: ${resume.title}
+RÉSUMÉ - ${resume.title.toUpperCase()}
+=====================================
+
 Matière: ${resume.subject}
-Date: ${StudyHub.Utils.formatDate(resume.createdAt)}
-
+Créé le: ${new Date(resume.createdAt).toLocaleDateString('fr-FR')}
 ${resume.description ? `Description: ${resume.description}\n` : ''}
+${resume.tags && resume.tags.length > 0 ? `Tags: ${resume.tags.join(', ')}\n` : ''}
 
+CONTENU:
+--------
 ${resume.content}
-
-${resume.tags && resume.tags.length > 0 ? `Tags: ${resume.tags.join(', ')}` : ''}
         `.trim();
-        
-        const blob = new Blob([content], { type: 'text/plain' });
+
+        // Créer et télécharger le fichier
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -430,88 +535,29 @@ ${resume.tags && resume.tags.length > 0 ? `Tags: ${resume.tags.join(', ')}` : ''
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        
+
         StudyHub.NotificationManager.show('Résumé exporté avec succès', 'success');
-    }
-
-    displayImportedResumes() {
-        const importedGrid = document.getElementById('imported-resumes-grid');
-        if (!importedGrid) return;
-        
-        importedGrid.innerHTML = '';
-        
-        if (this.importedResumes.length === 0) {
-            importedGrid.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-file-import"></i>
-                    <h3>Aucun résumé importé</h3>
-                    <p>Les résumés générés automatiquement à partir de vos fichiers importés apparaîtront ici.</p>
-                    <button class="btn btn-primary" onclick="resumesManager.switchTab('browse')">
-                        <i class="fas fa-file-alt"></i> Voir tous les résumés
-                    </button>
-                </div>
-            `;
-            return;
-        }
-        
-        this.importedResumes.forEach(resume => {
-            const resumeCard = this.createImportedResumeCard(resume);
-            importedGrid.appendChild(resumeCard);
-        });
-    }
-
-    createImportedResumeCard(resume) {
-        const card = document.createElement('div');
-        card.className = 'resume-card card imported';
-        card.innerHTML = `
-            <div class="resume-header">
-                <h3 class="resume-title">${resume.title}</h3>
-                <span class="resume-subject">${resume.subject}</span>
-                <span class="imported-badge">
-                    <i class="fas fa-robot"></i> Généré automatiquement
-                </span>
-            </div>
-            <p class="resume-description">${resume.description}</p>
-            <div class="resume-meta">
-                <span class="resume-date">
-                    <i class="fas fa-calendar"></i>
-                    ${StudyHub.Utils.formatDate(resume.createdAt)}
-                </span>
-                <span class="source-file">
-                    <i class="fas fa-file"></i>
-                    Source: ${resume.sourceFile}
-                </span>
-            </div>
-            <div class="resume-actions">
-                <button class="btn btn-secondary" onclick="resumesManager.viewResume('${resume.id}')">
-                    <i class="fas fa-eye"></i> Voir
-                </button>
-                <button class="btn btn-primary" onclick="resumesManager.exportResume()">
-                    <i class="fas fa-download"></i> Exporter
-                </button>
-            </div>
-        `;
-        return card;
     }
 
     // Méthode pour ajouter un résumé importé (appelée depuis import.js)
     addImportedResume(resumeData) {
         const resume = {
             id: StudyHub.Utils.generateId(),
-            title: resumeData.title,
             subject: resumeData.subject,
-            description: resumeData.description,
+            title: resumeData.title,
+            description: resumeData.description || '',
             content: resumeData.content,
-            sourceFile: resumeData.sourceFile,
-            isImported: true,
+            tags: resumeData.tags || [],
             createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
+            type: 'imported',
+            sourceFile: resumeData.sourceFile
         };
-        
+
         this.importedResumes.push(resume);
         StudyHub.StorageManager.set('imported_resumes', this.importedResumes);
-        
-        // Rafraîchir l'affichage si on est sur l'onglet des résumés importés
+
+        // Recharger l'affichage si on est sur l'onglet des résumés importés
         if (this.currentTab === 'imported') {
             this.displayImportedResumes();
         }
